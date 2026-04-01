@@ -61,6 +61,7 @@ export const createDateColumnDef = (field, headerName, options = {}) => {
 
 /**
  * 기본 그리드 옵션 (Nexacro Grid 공통 설정 대응)
+ * AG Grid Enterprise v31 기준 (v31에서 enableRangeSelection 제거됨 - Enterprise에서 자동 활성화)
  */
 export const defaultGridOptions = {
   defaultColDef: {
@@ -73,7 +74,6 @@ export const defaultGridOptions = {
   animateRows: true,
   pagination: false,
   suppressMovableColumns: false,
-  enableRangeSelection: true,
   suppressCellFocus: false,
 };
 
