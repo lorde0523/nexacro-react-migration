@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- [MIGRATION] AS-IS: Nexcore CodeDAO XML -->
+<!-- [TO-BE]: MyBatis Mapper XML -->
+
+<mapper namespace="com.migration.nexacro.mapper.CodeMapper">
+
+    <resultMap id="CodeResultMap" type="CodeDTO">
+        <id column="code_group" property="codeGroup"/>
+        <id column="code_value" property="codeValue"/>
+        <result property="codeGroupName" column="code_group_name"/>
+        <result property="codeName" column="code_name"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="useYn" column="use_yn"/>
+        <result property="remark" column="remark"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 공통코드 목록 조회 (Nexacro fn_getCodes 대응) -->
+    <select id="findAll" resultMap="CodeResultMap">
+        SELECT code_group, code_group_name, code_value, code_name, sort_order, use_yn, remark, created_at
+        FROM codes
+        <where>
+            AND use_yn = 'Y'
+            <if test="codeGroup != null and codeGroup != ''">
+                AND code_group = #{codeGroup}
+            </if>
+            <if test="codeValue != null and codeValue != ''">
+                AND (
+                    code_value LIKE CONCAT('%', #{codeValue}, '%')
+                    OR code_name LIKE CONCAT('%', #{codeValue}, '%')
+                )
+            </if>
+        </where>
+        ORDER BY code_group, sort_order, code_value
+    </select>
+
+    <!-- 코드 그룹 목록 조회 -->
+    <select id="findGroups" resultType="map">
+        SELECT DISTINCT code_group AS codeGroup, code_group_name AS codeGroupName
+        FROM codes
+        WHERE use_yn = 'Y'
+        ORDER BY code_group
+    </select>
+
+    <!-- 코드 단건 조회 -->
+    <select id="findByGroupAndValue" resultMap="CodeResultMap">
+        SELECT code_group, code_group_name, code_value, code_name, sort_order, use_yn, remark, created_at
+        FROM codes
+        WHERE code_group = #{codeGroup} AND code_value = #{codeValue} AND use_yn = 'Y'
+    </select>
+
+</mapper>

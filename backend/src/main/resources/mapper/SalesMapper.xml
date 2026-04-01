@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- [MIGRATION] AS-IS: Nexcore SalesDAO XML -->
+<!-- [TO-BE]: MyBatis Mapper XML -->
+
+<mapper namespace="com.migration.nexacro.mapper.SalesMapper">
+
+    <resultMap id="SalesResultMap" type="SalesDTO">
+        <id property="salesId" column="sales_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="year" column="year"/>
+        <result property="quarter" column="quarter"/>
+        <result property="month" column="month"/>
+        <result property="productName" column="product_name"/>
+        <result property="salesAmount" column="sales_amount"/>
+        <result property="salesCount" column="sales_count"/>
+        <result property="salesAvg" column="sales_avg"/>
+        <result property="growthRate" column="growth_rate"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <!-- 매출 목록 조회 (Nexacro fn_search 대응) -->
+    <select id="findAll" parameterType="SearchCondition" resultMap="SalesResultMap">
+        SELECT
+            sales_id, dept_id, dept_name, year, quarter, month,
+            product_name, sales_amount, sales_count, sales_avg, growth_rate, created_at
+        FROM sales
+        <where>
+            <if test="year != null">
+                AND year = #{year}
+            </if>
+            <if test="quarter != null">
+                AND quarter = #{quarter}
+            </if>
+            <if test="deptCode != null and deptCode != ''">
+                AND dept_id = #{deptCode}
+            </if>
+        </where>
+        ORDER BY year DESC, quarter DESC, dept_id, product_name
+    </select>
+
+    <!-- 연도별 매출 요약 (차트 데이터용, Nexacro Dataset 바인딩 대응) -->
+    <select id="findSummaryByYear" resultType="map">
+        SELECT
+            quarter,
+            SUM(sales_amount) AS total_amount,
+            SUM(sales_count) AS total_count,
+            AVG(growth_rate) AS avg_growth_rate
+        FROM sales
+        WHERE year = #{year}
+        GROUP BY quarter
+        ORDER BY quarter
+    </select>
+
+    <!-- 부서별 매출 요약 (파이 차트용) -->
+    <select id="findSummaryByDept" parameterType="SearchCondition" resultType="map">
+        SELECT
+            dept_id,
+            dept_name,
+            SUM(sales_amount) AS total_amount,
+            SUM(sales_count) AS total_count
+        FROM sales
+        <where>
+            <if test="year != null">
+                AND year = #{year}
+            </if>
+            <if test="quarter != null">
+                AND quarter = #{quarter}
+            </if>
+        </where>
+        GROUP BY dept_id, dept_name
+        ORDER BY total_amount DESC
+    </select>
+
+</mapper>

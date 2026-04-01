@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- [MIGRATION] AS-IS: Nexcore DepartmentDAO XML -->
+<!-- [TO-BE]: MyBatis Mapper XML -->
+
+<mapper namespace="com.migration.nexacro.mapper.DepartmentMapper">
+
+    <resultMap id="DepartmentResultMap" type="DepartmentDTO">
+        <id property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="deptHead" column="dept_head"/>
+        <result property="location" column="location"/>
+        <result property="empCount" column="emp_count"/>
+        <result property="useYn" column="use_yn"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <resultMap id="EmployeeResultMap" type="EmployeeDTO">
+        <id property="empId" column="emp_id"/>
+        <result property="empName" column="emp_name"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="position" column="position"/>
+        <result property="hireDate" column="hire_date"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <!-- 부서 전체 조회 -->
+    <select id="findAll" resultMap="DepartmentResultMap">
+        SELECT
+            d.dept_id,
+            d.dept_name,
+            d.dept_head,
+            d.location,
+            d.use_yn,
+            d.created_at,
+            d.updated_at,
+            COUNT(e.emp_id) AS emp_count
+        FROM departments d
+        LEFT JOIN employees e ON d.dept_id = e.dept_id AND e.status = '재직'
+        WHERE d.use_yn = 'Y'
+        GROUP BY d.dept_id, d.dept_name, d.dept_head, d.location, d.use_yn, d.created_at, d.updated_at
+        ORDER BY d.dept_id
+    </select>
+
+    <!-- 부서 상세 조회 -->
+    <select id="findById" resultMap="DepartmentResultMap">
+        SELECT dept_id, dept_name, dept_head, location, emp_count, use_yn, created_at, updated_at
+        FROM departments
+        WHERE dept_id = #{deptId}
+    </select>
+
+    <!-- 부서별 사원 조회 (Nexacro grd_oncellclick 연동 대응) -->
+    <select id="findEmployeesByDeptId" resultMap="EmployeeResultMap">
+        SELECT emp_id, emp_name, dept_id, dept_name, position, hire_date, email, phone, status
+        FROM employees
+        WHERE dept_id = #{deptId}
+        ORDER BY emp_id
+    </select>
+
+    <!-- 부서 등록 -->
+    <insert id="insert" parameterType="DepartmentDTO">
+        INSERT INTO departments (dept_id, dept_name, dept_head, location, use_yn)
+        VALUES (#{deptId}, #{deptName}, #{deptHead}, #{location}, COALESCE(#{useYn}, 'Y'))
+    </insert>
+
+    <!-- 부서 수정 -->
+    <update id="update" parameterType="DepartmentDTO">
+        UPDATE departments
+        <set>
+            <if test="deptName != null">dept_name = #{deptName},</if>
+            <if test="deptHead != null">dept_head = #{deptHead},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="useYn != null">use_yn = #{useYn},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE dept_id = #{deptId}
+    </update>
+
+</mapper>
