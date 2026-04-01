@@ -1,0 +1,28 @@
+{
+  "name": "nexacro-react-migration-frontend",
+  "version": "1.0.0",
+  "description": "Nexacro 14 → React 17 + Vite 마이그레이션 프론트엔드",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-router-dom": "^5.3.4",
+    "axios": "^1.6.2",
+    "ag-grid-community": "^29.3.5",
+    "ag-grid-enterprise": "^29.3.5",
+    "ag-grid-react": "^29.3.5",
+    "echarts": "^5.4.3",
+    "echarts-for-react": "^3.0.2",
+    "react-froala-wysiwyg": "^4.1.1",
+    "froala-editor": "^4.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8"
+  }
+}

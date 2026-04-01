@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- [MIGRATION] AS-IS: Nexcore EmployeeDAO XML -->
+<!-- [TO-BE]: MyBatis Mapper XML -->
+
+<mapper namespace="com.migration.nexacro.mapper.EmployeeMapper">
+
+    <resultMap id="EmployeeResultMap" type="EmployeeDTO">
+        <id property="empId" column="emp_id"/>
+        <result property="empName" column="emp_name"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="position" column="position"/>
+        <result property="hireDate" column="hire_date"/>
+        <result property="email" column="email"/>
+        <result property="phone" column="phone"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 사원 목록 조회 (Nexacro fn_search 대응) -->
+    <select id="findAll" parameterType="SearchCondition" resultMap="EmployeeResultMap">
+        SELECT
+            e.emp_id,
+            e.emp_name,
+            e.dept_id,
+            COALESCE(d.dept_name, e.dept_name) AS dept_name,
+            e.position,
+            e.hire_date,
+            e.email,
+            e.phone,
+            e.status,
+            e.created_at,
+            e.updated_at
+        FROM employees e
+        LEFT JOIN departments d ON e.dept_id = d.dept_id
+        <where>
+            <if test="empName != null and empName != ''">
+                AND e.emp_name LIKE CONCAT('%', #{empName}, '%')
+            </if>
+            <if test="deptCode != null and deptCode != ''">
+                AND e.dept_id = #{deptCode}
+            </if>
+            <if test="hireStartDate != null and hireStartDate != ''">
+                AND e.hire_date >= #{hireStartDate}
+            </if>
+            <if test="hireEndDate != null and hireEndDate != ''">
+                AND e.hire_date &lt;= #{hireEndDate}
+            </if>
+            <if test="status != null and status != ''">
+                AND e.status = #{status}
+            </if>
+        </where>
+        ORDER BY e.emp_id
+    </select>
+
+    <!-- 사원 상세 조회 -->
+    <select id="findById" resultMap="EmployeeResultMap">
+        SELECT
+            e.emp_id,
+            e.emp_name,
+            e.dept_id,
+            COALESCE(d.dept_name, e.dept_name) AS dept_name,
+            e.position,
+            e.hire_date,
+            e.email,
+            e.phone,
+            e.status,
+            e.created_at,
+            e.updated_at
+        FROM employees e
+        LEFT JOIN departments d ON e.dept_id = d.dept_id
+        WHERE e.emp_id = #{empId}
+    </select>
+
+    <!-- 사원 등록 (Nexacro INSERT 대응) -->
+    <insert id="insert" parameterType="EmployeeDTO">
+        INSERT INTO employees (
+            emp_id, emp_name, dept_id, dept_name,
+            position, hire_date, email, phone, status
+        ) VALUES (
+            #{empId}, #{empName}, #{deptId}, #{deptName},
+            #{position}, #{hireDate}, #{email}, #{phone}, #{status}
+        )
+    </insert>
+
+    <!-- 사원 수정 (Nexacro UPDATE 대응) -->
+    <update id="update" parameterType="EmployeeDTO">
+        UPDATE employees
+        <set>
+            <if test="empName != null">emp_name = #{empName},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="deptName != null">dept_name = #{deptName},</if>
+            <if test="position != null">position = #{position},</if>
+            <if test="hireDate != null">hire_date = #{hireDate},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE emp_id = #{empId}
+    </update>
+
+    <!-- 사원 삭제 (Nexacro DELETE 대응) -->
+    <delete id="deleteById">
+        DELETE FROM employees WHERE emp_id = #{empId}
+    </delete>
+
+    <!-- 카운트 조회 -->
+    <select id="countByCondition" parameterType="SearchCondition" resultType="int">
+        SELECT COUNT(*) FROM employees
+        <where>
+            <if test="empName != null and empName != ''">
+                AND emp_name LIKE CONCAT('%', #{empName}, '%')
+            </if>
+            <if test="deptCode != null and deptCode != ''">
+                AND dept_id = #{deptCode}
+            </if>
+        </where>
+    </select>
+
+</mapper>

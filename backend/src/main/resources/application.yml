@@ -1,0 +1,53 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  # H2 In-Memory DB (개발용 - 실제 운영 시 MySQL 설정으로 교체)
+  datasource:
+    url: jdbc:h2:mem:nexacro_migration;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 Console (개발용)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # SQL 초기화
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+  # MySQL 설정 (운영 환경 - 위 H2 설정을 주석 처리하고 아래 설정 사용)
+  # datasource:
+  #   url: jdbc:mysql://localhost:3306/nexacro_migration?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=utf8
+  #   driver-class-name: com.mysql.cj.jdbc.Driver
+  #   username: root
+  #   password: your_password
+  #   hikari:
+  #     maximum-pool-size: 10
+  #     minimum-idle: 2
+  #     connection-timeout: 30000
+
+# MyBatis 설정 (Nexcore DAO → MyBatis)
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.migration.nexacro.dto
+  configuration:
+    map-underscore-to-camel-case: true
+    default-fetch-size: 100
+    default-statement-timeout: 30
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 로깅 설정
+logging:
+  level:
+    com.migration.nexacro: DEBUG
+    org.mybatis: DEBUG
+    org.springframework.web: INFO

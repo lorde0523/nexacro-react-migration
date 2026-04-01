@@ -1,0 +1,164 @@
+/* [MIGRATION] AS-IS: Nexacro Grid 커스텀 스타일 */
+/* [TO-BE]: AG Grid Enterprise 커스텀 스타일 */
+
+/* AG Grid 공통 래퍼 */
+.common-grid-wrapper {
+  width: 100%;
+}
+
+/* Grid 툴바 */
+.grid-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+/* AG Grid 헤더 스타일 (Nexacro Grid 헤더 대응) */
+.ag-theme-alpine .ag-header {
+  background-color: #f5f7fa;
+  font-weight: 600;
+  font-size: 12px;
+  color: #555;
+}
+
+.ag-theme-alpine .ag-header-cell {
+  border-right: 1px solid #e0e0e0;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* AG Grid 행 스타일 */
+.ag-theme-alpine .ag-row {
+  font-size: 12px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.ag-theme-alpine .ag-row:hover {
+  background-color: #e6f7ff !important;
+}
+
+.ag-theme-alpine .ag-row-selected {
+  background-color: #bae7ff !important;
+}
+
+/* 셀 패딩 */
+.ag-theme-alpine .ag-cell {
+  padding-left: 8px;
+  padding-right: 8px;
+  line-height: 30px;
+}
+
+/* 행 높이 (Nexacro Grid rowHeight 대응) */
+.ag-theme-alpine .ag-row {
+  height: 32px;
+}
+
+/* 헤더 높이 */
+.ag-theme-alpine .ag-header-row {
+  height: 34px;
+}
+
+/* 숫자 컬럼 우측 정렬 */
+.ag-theme-alpine .ag-cell.ag-right-aligned-cell {
+  text-align: right;
+}
+
+/* 페이징 스타일 */
+.ag-theme-alpine .ag-paging-panel {
+  background-color: #fafafa;
+  border-top: 1px solid #e8e8e8;
+  font-size: 12px;
+  color: #555;
+}
+
+/* 필터 아이콘 */
+.ag-theme-alpine .ag-filter-icon {
+  color: #1890ff;
+}
+
+/* 정렬 아이콘 */
+.ag-theme-alpine .ag-sort-indicator-icon {
+  color: #1890ff;
+}
+
+/* Excel 내보내기 버튼 */
+.btn-excel {
+  font-size: 12px;
+  padding: 4px 10px;
+  height: 28px;
+}
+
+/* 삭제 행 스타일 (Nexacro 행 상태 표시 대응) */
+.ag-theme-alpine .ag-row.row-deleted {
+  background-color: #fff1f0 !important;
+  text-decoration: line-through;
+  color: #ff4d4f;
+}
+
+/* 신규 행 스타일 */
+.ag-theme-alpine .ag-row.row-new {
+  background-color: #f6ffed !important;
+  color: #52c41a;
+}
+
+/* 수정 행 스타일 */
+.ag-theme-alpine .ag-row.row-modified {
+  background-color: #fffbe6 !important;
+  color: #faad14;
+}
+
+/* 헤더 그룹 (Nexacro 병합 헤더 대응) */
+.ag-theme-alpine .ag-header-group-cell {
+  background-color: #e8f0fe;
+  font-weight: 600;
+  border-right: 1px solid #d0d0d0;
+}
+
+/* 셀 포커스 */
+.ag-theme-alpine .ag-cell:focus {
+  border: 1px solid #1890ff !important;
+  outline: none;
+}
+
+/* 선택 체크박스 */
+.ag-theme-alpine .ag-checkbox-input-wrapper.ag-checked::after {
+  color: #1890ff;
+}
+
+/* 범위 선택 (Range Selection) */
+.ag-theme-alpine .ag-cell-range-selected {
+  background-color: rgba(24, 144, 255, 0.15) !important;
+}
+
+/* 사이드 바 */
+.ag-theme-alpine .ag-side-bar {
+  background-color: #f5f7fa;
+}
+
+/* 상태 바 */
+.ag-theme-alpine .ag-status-bar {
+  background-color: #fafafa;
+  border-top: 1px solid #e8e8e8;
+  font-size: 11px;
+  color: #999;
+}
+
+/* 툴팁 */
+.ag-theme-alpine .ag-tooltip {
+  background-color: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+/* 컬럼 드래그 중 스타일 */
+.ag-theme-alpine .ag-column-drop-wrapper {
+  background-color: #e6f7ff;
+  border: 1px dashed #1890ff;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #1890ff;
+}
