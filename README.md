@@ -1,38 +1,38 @@
 # Nexacro React Migration
 
-Backend-first migration scaffold for converting Nexacro 14 transactions into Spring Boot API contracts.
+Nexacro 14 transaction을 Spring Boot API 계약으로 전환하기 위한 백엔드 우선 마이그레이션 스캐폴드입니다.
 
-## Current Scope
+## 현재 범위
 
-This repository starts with the backend migration layer only. React screens are intentionally deferred until publishing output is ready.
+이 저장소는 백엔드 마이그레이션 레이어부터 시작합니다. React 화면 이관은 퍼블리싱 산출물이 준비된 뒤 진행하도록 의도적으로 후순위로 둡니다.
 
-The first deliverable is an automated mapping report:
+첫 번째 산출물은 자동 매핑 리포트입니다.
 
-- Screen ID and `.xfdl` file path
-- Nexacro transaction name and service URL
-- Input and output dataset mappings
-- Search parameter candidates from dataset usage
-- Dataset column candidates
-- Legacy server source mapping hints
-- Spring Boot endpoint, request DTO, and response DTO candidates
+- 화면 ID와 `.xfdl` 파일 경로
+- Nexacro transaction 명과 service URL
+- input/output dataset 매핑
+- dataset 사용처 기반 search parameter 후보
+- dataset 컬럼 후보
+- 기존 서버 소스 매핑 힌트
+- Spring Boot endpoint, request DTO, response DTO 후보
 
-## Project Structure
+## 프로젝트 구조
 
 ```text
 src/main/java/com/lorde0523/migration
-  analysis/          Nexacro analysis service
-  analysis/model/    Report DTOs and extracted contract models
-  analysis/parser/   .xfdl/.xjs parser
-  analysis/report/   Markdown and CSV report renderers
-  analysis/web/      Migration analysis API
-  common/            ApiResponse and paging response
-  config/            MyBatis mapper scan setup
-  session/           SessionVo placeholder for secured APIs
+  analysis/          Nexacro 분석 서비스
+  analysis/model/    리포트 DTO와 추출된 계약 모델
+  analysis/parser/   .xfdl/.xjs 파서
+  analysis/report/   Markdown/CSV 리포트 렌더러
+  analysis/web/      마이그레이션 분석 API
+  common/            ApiResponse와 paging response
+  config/            MyBatis mapper scan 설정
+  session/           권한 API용 SessionVo 기본 구조
 ```
 
-## Analyze Nexacro Sources
+## Nexacro 소스 분석
 
-Run the Spring Boot app, then call:
+Spring Boot 앱을 실행한 뒤 아래 API를 호출합니다.
 
 ```bash
 curl -X POST http://localhost:8080/api/migration/analyze \
@@ -40,7 +40,7 @@ curl -X POST http://localhost:8080/api/migration/analyze \
   -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
 ```
 
-Markdown report:
+Markdown 리포트:
 
 ```bash
 curl -X POST "http://localhost:8080/api/migration/analyze/report?format=markdown" \
@@ -48,7 +48,7 @@ curl -X POST "http://localhost:8080/api/migration/analyze/report?format=markdown
   -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
 ```
 
-CSV report:
+CSV 리포트:
 
 ```bash
 curl -X POST "http://localhost:8080/api/migration/analyze/report?format=csv" \
@@ -56,18 +56,18 @@ curl -X POST "http://localhost:8080/api/migration/analyze/report?format=csv" \
   -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
 ```
 
-## Backend Implementation Priority
+## 백엔드 구현 우선순위
 
-1. Common code, common combo, and post-login base lookup APIs
-2. Search and list APIs
-3. Save, update, and delete APIs
-4. Batch, Excel, file, mail, and special functions
-5. React integration after publishing is ready
+1. 공통 코드, 공통 콤보, 로그인 후 기본 조회 API
+2. 조회 화면의 search/list API
+3. 저장, 수정, 삭제 API
+4. 배치, 엑셀, 파일, 메일, 특수 기능
+5. 퍼블리싱 완료 후 React 연동
 
-## Verification
+## 검증
 
 ```bash
 mvn test
 ```
 
-The first analyzer test uses sample `.xfdl/.xjs` content and checks dataset extraction, transaction parsing, search parameter candidates, and generated endpoint candidates.
+첫 번째 분석기 테스트는 샘플 `.xfdl/.xjs` 내용을 사용해 dataset 추출, transaction 파싱, search parameter 후보, 생성된 endpoint 후보를 검증합니다.
