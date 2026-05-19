@@ -1,0 +1,14 @@
+this.fnSave = function () {
+  this.dsSave.setColumn(0, "SAMPLE_ID", this.edtSampleId.value);
+  this.dsSave.setColumn(0, "SAMPLE_NM", this.edtSampleNm.value);
+  this.dsSave.setColumn(0, "USE_YN", this.cboUseYn.value);
+
+  this.transaction(
+    "insert",
+    "SAMPLE_INSERT",
+    "dsSave=dsSave",
+    "dsSaveResult=dsSaveResult",
+    "",
+    "fnCallback"
+  );
+};

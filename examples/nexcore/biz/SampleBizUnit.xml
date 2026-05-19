@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bizUnit id="SampleBizUnit">
+    <bizUnitName>샘플업무</bizUnitName>
+    <componentId>sampleComponent</componentId>
+    <description>샘플 업무 BizUnit</description>
+
+    <method-list>
+        <method>
+            <methodId>select</methodId>
+            <methodName>조회</methodName>
+            <transactionId>SAMPLE_SELECT</transactionId>
+            <description>샘플 조회</description>
+        </method>
+
+        <method>
+            <methodId>insert</methodId>
+            <methodName>등록</methodName>
+            <transactionId>SAMPLE_INSERT</transactionId>
+            <description>샘플 등록</description>
+        </method>
+    </method-list>
+</bizUnit>

@@ -78,6 +78,16 @@ python tools/nexcore_nexacro_dataset_mapper.py \
   --write-dtos
 ```
 
+샘플 입력 파일은 [examples](examples) 폴더에 있습니다.
+
+```bash
+python tools/nexcore_nexacro_dataset_mapper.py \
+  --nexacro-root examples/nexacro \
+  --nexcore-root examples/nexcore \
+  --out build/example-analysis \
+  --write-dtos
+```
+
 출력 파일:
 
 - `build/migration-analysis/mapping-report.md`

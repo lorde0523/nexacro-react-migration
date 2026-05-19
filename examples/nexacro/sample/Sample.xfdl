@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FDL>
+  <Form id="Sample">
+    <Objects>
+      <Dataset id="dsSearch">
+        <ColumnInfo>
+          <Column id="SAMPLE_NM" type="STRING" size="50"/>
+          <Column id="USE_YN" type="STRING" size="1"/>
+        </ColumnInfo>
+      </Dataset>
+
+      <Dataset id="dsSampleList">
+        <ColumnInfo>
+          <Column id="SAMPLE_ID" type="STRING" size="20"/>
+          <Column id="SAMPLE_NM" type="STRING" size="50"/>
+          <Column id="USE_YN" type="STRING" size="1"/>
+          <Column id="CREATED_AT" type="DATETIME" size=""/>
+        </ColumnInfo>
+      </Dataset>
+
+      <Dataset id="dsSave">
+        <ColumnInfo>
+          <Column id="SAMPLE_ID" type="STRING" size="20"/>
+          <Column id="SAMPLE_NM" type="STRING" size="50"/>
+          <Column id="USE_YN" type="STRING" size="1"/>
+        </ColumnInfo>
+      </Dataset>
+
+      <Dataset id="dsSaveResult">
+        <ColumnInfo>
+          <Column id="RESULT_CODE" type="STRING" size="20"/>
+          <Column id="RESULT_MESSAGE" type="STRING" size="200"/>
+        </ColumnInfo>
+      </Dataset>
+    </Objects>
+
+    <Script><![CDATA[
+      this.fnSearch = function () {
+        this.dsSearch.setColumn(0, "SAMPLE_NM", this.edtSampleNm.value);
+        this.dsSearch.setColumn(0, "USE_YN", this.cboUseYn.value);
+
+        this.transaction(
+          "select",
+          "SAMPLE_SELECT",
+          "dsSearch=dsSearch",
+          "dsSampleList=dsSampleList",
+          "",
+          "fnCallback"
+        );
+      };
+    ]]></Script>
+  </Form>
+</FDL>
