@@ -66,6 +66,31 @@ curl -X POST "http://localhost:8080/api/migration/analyze/report?format=csv" \
 5. Nexacro transaction의 service ID와 Nexcore `transactionId`를 비교해 `MATCHED` 또는 `NOT_FOUND` 상태를 만듭니다.
 6. 매칭된 transaction의 input dataset은 `Request` DTO 후보로, output dataset은 `Response` DTO 후보로 변환합니다.
 
+## Python 사이드 분석 도구
+
+Spring Boot 실행 없이 파일 기준으로 빠르게 분석하려면 아래 Python 도구를 사용할 수 있습니다.
+
+```bash
+python tools/nexcore_nexacro_dataset_mapper.py \
+  --nexacro-root C:/path/to/nexacro \
+  --nexcore-root C:/path/to/nexcore \
+  --out build/migration-analysis \
+  --write-dtos
+```
+
+출력 파일:
+
+- `build/migration-analysis/mapping-report.md`
+- `build/migration-analysis/mapping-report.csv`
+- `build/migration-analysis/dto/*.java` (`--write-dtos` 옵션 사용 시)
+
+Nexcore에서 비교해야 하는 ID 태그가 `transactionId`가 아니라면 [tools/nexcore_nexacro_dataset_mapper.py](tools/nexcore_nexacro_dataset_mapper.py) 상단의 아래 값을 수정하면 됩니다.
+
+```python
+BIZUNIT_ID_TAGS = ("transactionId",)
+TRANSACTION_ID_ARG_INDEX = 1
+```
+
 Nexcore BizUnit XML 예시는 아래 형식을 기준으로 합니다.
 
 ```xml
