@@ -3,10 +3,14 @@ package com.lorde0523.migration.analysis.parser;
 import com.lorde0523.migration.analysis.model.ApiEndpointCandidate;
 import com.lorde0523.migration.analysis.model.DatasetColumn;
 import com.lorde0523.migration.analysis.model.DatasetSpec;
+import com.lorde0523.migration.analysis.model.DtoCandidate;
+import com.lorde0523.migration.analysis.model.DtoFieldCandidate;
 import com.lorde0523.migration.analysis.model.MigrationAnalysisReport;
+import com.lorde0523.migration.analysis.model.NexcoreServiceMethod;
 import com.lorde0523.migration.analysis.model.ScreenAnalysis;
 import com.lorde0523.migration.analysis.model.SearchParameterCandidate;
 import com.lorde0523.migration.analysis.model.ServerMappingCandidate;
+import com.lorde0523.migration.analysis.model.ServiceMatch;
 import com.lorde0523.migration.analysis.model.TransactionSpec;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -52,8 +56,9 @@ public class NexacroContractExtractor {
             throw new IllegalArgumentException("nexacroRoot must be an existing directory");
         }
 
+        List<NexcoreServiceMethod> nexcoreServices = extractNexcoreServices(legacyServerRoot);
         List<ScreenAnalysis> screens = findFiles(nexacroRoot, ".xfdl").stream()
-                .map(path -> analyzeScreen(nexacroRoot, path, legacyServerRoot))
+                .map(path -> analyzeScreen(nexacroRoot, path, legacyServerRoot, nexcoreServices))
                 .sorted(Comparator.comparing(ScreenAnalysis::screenId))
                 .toList();
 
@@ -61,11 +66,17 @@ public class NexacroContractExtractor {
                 Instant.now(),
                 nexacroRoot.toAbsolutePath().normalize().toString(),
                 legacyServerRoot == null ? null : legacyServerRoot.toAbsolutePath().normalize().toString(),
+                nexcoreServices,
                 screens
         );
     }
 
-    private ScreenAnalysis analyzeScreen(Path nexacroRoot, Path xfdlPath, Path legacyServerRoot) {
+    private ScreenAnalysis analyzeScreen(
+            Path nexacroRoot,
+            Path xfdlPath,
+            Path legacyServerRoot,
+            List<NexcoreServiceMethod> nexcoreServices
+    ) {
         String xfdlContent = read(xfdlPath);
         String screenId = extractScreenId(xfdlContent).orElse(stripExtension(xfdlPath.getFileName().toString()));
         Path scriptPath = siblingScriptPath(xfdlPath);
@@ -75,6 +86,8 @@ public class NexacroContractExtractor {
         List<TransactionSpec> transactions = parseTransactions(scriptContent);
         List<SearchParameterCandidate> searchParameters = parseSearchParameters(scriptContent);
         List<ServerMappingCandidate> mappings = mapLegacySources(transactions, legacyServerRoot);
+        List<ServiceMatch> serviceMatches = matchServices(transactions, nexcoreServices);
+        List<DtoCandidate> dtoCandidates = generateDtoCandidates(screenId, transactions, datasets);
         List<ApiEndpointCandidate> endpoints = transactions.stream()
                 .map(this::toEndpointCandidate)
                 .toList();
@@ -86,8 +99,66 @@ public class NexacroContractExtractor {
                 transactions,
                 searchParameters,
                 mappings,
+                serviceMatches,
+                dtoCandidates,
                 endpoints
         );
+    }
+
+    private List<NexcoreServiceMethod> extractNexcoreServices(Path legacyServerRoot) {
+        if (legacyServerRoot == null || !Files.isDirectory(legacyServerRoot)) {
+            return List.of();
+        }
+
+        List<NexcoreServiceMethod> methods = new ArrayList<>();
+        for (Path path : findFiles(legacyServerRoot, ".xml")) {
+            String content = read(path);
+            if (!content.contains("<bizUnit") || !content.contains("<transactionId>")) {
+                continue;
+            }
+            methods.addAll(parseBizUnitMethods(legacyServerRoot, path, content));
+        }
+        return List.copyOf(methods);
+    }
+
+    private List<NexcoreServiceMethod> parseBizUnitMethods(Path legacyServerRoot, Path path, String content) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setExpandEntityReferences(false);
+            Document document = factory.newDocumentBuilder().parse(new InputSource(new StringReader(content)));
+            NodeList bizUnits = document.getElementsByTagName("bizUnit");
+            List<NexcoreServiceMethod> methods = new ArrayList<>();
+
+            for (int i = 0; i < bizUnits.getLength(); i++) {
+                Element bizUnit = (Element) bizUnits.item(i);
+                String bizUnitId = bizUnit.getAttribute("id");
+                String bizUnitName = firstText(bizUnit, "bizUnitName");
+                String componentId = firstText(bizUnit, "componentId");
+                NodeList methodNodes = bizUnit.getElementsByTagName("method");
+                for (int j = 0; j < methodNodes.getLength(); j++) {
+                    Element method = (Element) methodNodes.item(j);
+                    String transactionId = firstText(method, "transactionId");
+                    if (transactionId.isBlank()) {
+                        continue;
+                    }
+                    methods.add(new NexcoreServiceMethod(
+                            bizUnitId,
+                            bizUnitName,
+                            componentId,
+                            firstText(method, "methodId"),
+                            firstText(method, "methodName"),
+                            transactionId,
+                            legacyServerRoot.relativize(path).toString().replace('\\', '/')
+                    ));
+                }
+            }
+            return methods;
+        } catch (Exception ignored) {
+            return List.of();
+        }
     }
 
     private List<DatasetSpec> parseDatasets(String content) {
@@ -151,6 +222,82 @@ public class NexacroContractExtractor {
         return List.copyOf(candidates.values());
     }
 
+    private List<ServiceMatch> matchServices(
+            List<TransactionSpec> transactions,
+            List<NexcoreServiceMethod> nexcoreServices
+    ) {
+        Map<String, NexcoreServiceMethod> byTransactionId = new LinkedHashMap<>();
+        for (NexcoreServiceMethod service : nexcoreServices) {
+            byTransactionId.put(service.transactionId(), service);
+        }
+
+        List<ServiceMatch> matches = new ArrayList<>();
+        for (TransactionSpec transaction : transactions) {
+            String transactionId = normalizeServiceExpression(transaction.serviceUrl());
+            NexcoreServiceMethod service = byTransactionId.get(transactionId);
+            matches.add(new ServiceMatch(
+                    transaction.name(),
+                    transactionId,
+                    service != null,
+                    service == null ? "" : service.bizUnitId(),
+                    service == null ? "" : service.methodId(),
+                    service == null ? "" : service.componentId(),
+                    service == null ? "" : service.filePath()
+            ));
+        }
+        return List.copyOf(matches);
+    }
+
+    private List<DtoCandidate> generateDtoCandidates(
+            String screenId,
+            List<TransactionSpec> transactions,
+            List<DatasetSpec> datasets
+    ) {
+        Map<String, DatasetSpec> datasetByName = new LinkedHashMap<>();
+        for (DatasetSpec dataset : datasets) {
+            datasetByName.put(dataset.name(), dataset);
+        }
+
+        List<DtoCandidate> candidates = new ArrayList<>();
+        for (TransactionSpec transaction : transactions) {
+            for (String datasetName : transaction.inputDatasets().values()) {
+                addDtoCandidate(candidates, screenId, transaction, datasetByName.get(datasetName), "Request");
+            }
+            for (String datasetName : transaction.outputDatasets().values()) {
+                addDtoCandidate(candidates, screenId, transaction, datasetByName.get(datasetName), "Response");
+            }
+        }
+        return List.copyOf(candidates);
+    }
+
+    private void addDtoCandidate(
+            List<DtoCandidate> candidates,
+            String screenId,
+            TransactionSpec transaction,
+            DatasetSpec dataset,
+            String direction
+    ) {
+        if (dataset == null) {
+            return;
+        }
+
+        List<DtoFieldCandidate> fields = dataset.columns().stream()
+                .map(column -> new DtoFieldCandidate(
+                        toCamelCase(column.name()),
+                        column.name(),
+                        toJavaType(column.type()),
+                        column.type(),
+                        column.size()
+                ))
+                .toList();
+        candidates.add(new DtoCandidate(
+                toPascalCase(screenId) + toPascalCase(transaction.name()) + direction,
+                dataset.name(),
+                direction,
+                fields
+        ));
+    }
+
     private void collectColumnReferences(
             Map<String, SearchParameterCandidate> candidates,
             Matcher matcher,
@@ -188,12 +335,14 @@ public class NexacroContractExtractor {
     }
 
     private ApiEndpointCandidate toEndpointCandidate(TransactionSpec transaction) {
-        String path = transaction.serviceUrl();
+        String path = normalizeServiceExpression(transaction.serviceUrl());
         if (path == null || path.isBlank()) {
             path = "/" + transaction.name();
         }
 
-        path = path.replace('\\', '/')
+        path = path.replace('.', '/')
+                .replace('_', '/')
+                .replace('\\', '/')
                 .replaceAll("\\.do$", "")
                 .replaceAll("^/+", "");
 
@@ -207,6 +356,14 @@ public class NexacroContractExtractor {
                 toPascalCase(transaction.name()) + "Request",
                 toPascalCase(transaction.name()) + "Response"
         );
+    }
+
+    private String firstText(Element parent, String tagName) {
+        NodeList nodes = parent.getElementsByTagName(tagName);
+        if (nodes.getLength() == 0 || nodes.item(0).getTextContent() == null) {
+            return "";
+        }
+        return nodes.item(0).getTextContent().trim();
     }
 
     private Optional<String> extractScreenId(String content) {
@@ -297,6 +454,28 @@ public class NexacroContractExtractor {
         return trimmed;
     }
 
+    private String normalizeServiceExpression(String value) {
+        String normalized = unquote(value);
+        int separator = normalized.indexOf("::");
+        if (separator >= 0) {
+            normalized = normalized.substring(separator + 2);
+        }
+        return normalized.trim();
+    }
+
+    private String toJavaType(String nexacroType) {
+        if (nexacroType == null) {
+            return "String";
+        }
+        return switch (nexacroType.toUpperCase(Locale.ROOT)) {
+            case "INT", "INTEGER" -> "Integer";
+            case "LONG", "BIGDECIMAL", "FLOAT", "DOUBLE", "DECIMAL" -> "java.math.BigDecimal";
+            case "DATE", "DATETIME", "TIME" -> "java.time.LocalDateTime";
+            case "BOOLEAN", "BOOL" -> "Boolean";
+            default -> "String";
+        };
+    }
+
     private boolean containsAny(String content, String... needles) {
         for (String needle : needles) {
             if (needle != null && !needle.isBlank() && content.contains(needle)) {
@@ -316,17 +495,29 @@ public class NexacroContractExtractor {
             return "Generated";
         }
 
-        String[] parts = value.replaceAll("[^A-Za-z0-9]+", " ").split("\\s+");
+        String[] parts = value
+                .replaceAll("([a-z0-9])([A-Z])", "$1 $2")
+                .replaceAll("[^A-Za-z0-9]+", " ")
+                .split("\\s+");
         StringBuilder result = new StringBuilder();
         for (String part : parts) {
             if (part.isBlank()) {
                 continue;
             }
-            result.append(part.substring(0, 1).toUpperCase(Locale.ROOT));
-            if (part.length() > 1) {
-                result.append(part.substring(1));
+            String normalized = part.toLowerCase(Locale.ROOT);
+            result.append(normalized.substring(0, 1).toUpperCase(Locale.ROOT));
+            if (normalized.length() > 1) {
+                result.append(normalized.substring(1));
             }
         }
         return Objects.requireNonNullElse(result.toString(), "Generated");
+    }
+
+    private String toCamelCase(String value) {
+        String pascal = toPascalCase(value);
+        if (pascal.isBlank()) {
+            return pascal;
+        }
+        return pascal.substring(0, 1).toLowerCase(Locale.ROOT) + pascal.substring(1);
     }
 }

@@ -9,6 +9,8 @@ public record ScreenAnalysis(
         List<TransactionSpec> transactions,
         List<SearchParameterCandidate> searchParameters,
         List<ServerMappingCandidate> serverMappings,
+        List<ServiceMatch> serviceMatches,
+        List<DtoCandidate> dtoCandidates,
         List<ApiEndpointCandidate> endpointCandidates
 ) {
 }

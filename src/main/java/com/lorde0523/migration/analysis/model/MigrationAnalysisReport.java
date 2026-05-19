@@ -7,6 +7,7 @@ public record MigrationAnalysisReport(
         Instant generatedAt,
         String nexacroRoot,
         String legacyServerRoot,
+        List<NexcoreServiceMethod> nexcoreServices,
         List<ScreenAnalysis> screens
 ) {
 }
