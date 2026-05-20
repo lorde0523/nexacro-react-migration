@@ -1,8 +1,11 @@
 package com.lorde0523.migration.analysis.report;
 
 import com.lorde0523.migration.analysis.model.ApiEndpointCandidate;
+import com.lorde0523.migration.analysis.model.DataAccessDecision;
 import com.lorde0523.migration.analysis.model.DtoCandidate;
+import com.lorde0523.migration.analysis.model.LegacyMethodFlow;
 import com.lorde0523.migration.analysis.model.MigrationAnalysisReport;
+import com.lorde0523.migration.analysis.model.MigrationUnit;
 import com.lorde0523.migration.analysis.model.ScreenAnalysis;
 import com.lorde0523.migration.analysis.model.SearchParameterCandidate;
 import com.lorde0523.migration.analysis.model.ServerMappingCandidate;
@@ -22,6 +25,8 @@ public final class MigrationReportRenderer {
         markdown.append("- Generated At: ").append(report.generatedAt()).append('\n');
         markdown.append("- Nexacro Root: ").append(report.nexacroRoot()).append('\n');
         markdown.append("- Legacy Server Root: ").append(nullToBlank(report.legacyServerRoot())).append("\n\n");
+        markdown.append("- Legacy Java Root: ").append(nullToBlank(report.legacyJavaRoot())).append('\n');
+        markdown.append("- Legacy DB Root: ").append(nullToBlank(report.legacyDbRoot())).append("\n\n");
         markdown.append("| Screen ID | File | Transaction | Service ID | Match | Input Dataset | Output Dataset | DTO Candidates | Search Parameters | Legacy Mapping | Endpoint |\n");
         markdown.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n");
 
@@ -32,6 +37,13 @@ public final class MigrationReportRenderer {
             }
             for (TransactionSpec transaction : screen.transactions()) {
                 appendMarkdownRow(markdown, screen, transaction);
+            }
+        }
+
+        if (!report.migrationUnits().isEmpty()) {
+            markdown.append("\n# Nexcore P/F/D Migration Units\n\n");
+            for (MigrationUnit unit : report.migrationUnits()) {
+                appendMigrationUnit(markdown, unit);
             }
         }
 
@@ -124,6 +136,30 @@ public final class MigrationReportRenderer {
                 .map(ApiEndpointCandidate::path)
                 .distinct()
                 .collect(Collectors.joining("; "));
+    }
+
+    private static void appendMigrationUnit(StringBuilder markdown, MigrationUnit unit) {
+        markdown.append("## ").append(unit.controllerClassName()).append("\n\n");
+        markdown.append("- Service: `").append(unit.serviceClassName()).append("`\n");
+        markdown.append("- Data Access: `").append(String.join(", ", unit.dataAccessClassNames())).append("`\n");
+        for (LegacyMethodFlow flow : unit.methodFlows()) {
+            markdown.append("- Flow: `").append(flow.controllerMethodName()).append("` -> `")
+                    .append(String.join(", ", flow.serviceMethodNames())).append("` -> `")
+                    .append(String.join(", ", flow.dataMethodNames())).append("`");
+            if (!flow.statementIds().isEmpty()) {
+                markdown.append(" statements `").append(String.join(", ", flow.statementIds())).append("`");
+            }
+            markdown.append('\n');
+        }
+        for (DataAccessDecision decision : unit.dataAccessDecisions()) {
+            markdown.append("- DB Decision: `").append(decision.dataClassName()).append(".")
+                    .append(decision.dataMethodName()).append("` -> `")
+                    .append(decision.decision()).append("`\n");
+        }
+        for (String warning : unit.warnings()) {
+            markdown.append("- Warning: ").append(warning).append('\n');
+        }
+        markdown.append('\n');
     }
 
     private static String csv(String value) {

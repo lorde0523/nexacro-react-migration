@@ -1,134 +1,77 @@
-# Nexacro React Migration
+# Nexcore Spring Boot 마이그레이션
 
-Nexacro 14 transaction과 Nexcore BizUnit의 `transactionId`를 대조해 Spring Boot API/DTO 계약 후보를 만드는 백엔드 우선 마이그레이션 스캐폴드입니다.
+이 프로젝트는 Nexcore 백엔드를 Gradle, Spring Boot 3.x, Java 21 기반으로 전환하기 위한 분석 및 코드 생성 도구입니다.
 
-## 현재 범위
+기존 Nexacro/Nexcore 자산을 분석하고, Nexcore Java 소스에서 흔히 사용하는 `P*`, `F*`, `D*` 계층 규칙을 기준으로 Spring Boot 코드 초안을 생성합니다.
 
-이 저장소는 백엔드 마이그레이션 레이어부터 시작합니다. React 화면 이관은 퍼블리싱 산출물이 준비된 뒤 진행하도록 의도적으로 후순위로 둡니다.
+- `P*`: Controller 후보
+- `F*`: Service 후보
+- `D*`: Data Access 후보
 
-첫 번째 산출물은 자동 매핑 리포트입니다.
+`D*` 클래스에서 iBatis SQL Map statement를 호출하는 경우, 설정 가능한 DB XML 폴더를 스캔해서 MyBatis Mapper 후보를 생성합니다.
 
-- 화면 ID와 `.xfdl` 파일 경로
-- Nexacro transaction 명과 service ID
-- Nexcore BizUnit의 `transactionId` 매칭 상태
-- input/output dataset 매핑
-- dataset 사용처 기반 search parameter 후보
-- dataset 컬럼 후보
-- 기존 서버 소스 매핑 힌트
-- Spring Boot endpoint, request DTO, response DTO 후보
+## 기술 스택
 
-## 프로젝트 구조
+- Gradle
+- Java 21 toolchain
+- Spring Boot 3.x
+- Spring Web
+- Spring Data JPA
+- MyBatis Spring Boot Starter
+- JavaParser
+- JUnit 5
 
-```text
-src/main/java/com/lorde0523/migration
-  analysis/          Nexacro 분석 서비스
-  analysis/model/    리포트 DTO와 추출된 계약 모델
-  analysis/parser/   .xfdl/.xjs/Nexcore BizUnit XML 파서
-  analysis/report/   Markdown/CSV 리포트 렌더러
-  analysis/web/      마이그레이션 분석 API
-  common/            ApiResponse와 paging response
-  config/            MyBatis mapper scan 설정
-  session/           권한 API용 SessionVo 기본 구조
-```
+## 분석 및 생성 실행
 
-## Nexacro 소스 분석
-
-Spring Boot 앱을 실행한 뒤 아래 API를 호출합니다.
+Spring Boot 애플리케이션을 실행한 뒤 아래 API를 호출합니다.
 
 ```bash
 curl -X POST http://localhost:8080/api/migration/analyze \
   -H "Content-Type: application/json" \
-  -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
+  -d '{
+    "nexacroRoot": "C:/path/to/nexacro",
+    "legacyServerRoot": "C:/path/to/legacy-server",
+    "legacyJavaRoot": "C:/path/to/src/java/z/zz/zzz/zzzz",
+    "legacyDbRoot": "C:/path/to/DB",
+    "generationOutputRoot": "build/generated-migration",
+    "basePackage": "com.example.migrated"
+  }'
 ```
 
-Markdown 리포트:
+`legacyDbRoot`는 고정 경로가 아닙니다. Nexcore/iBatis SQL Map XML은 프로젝트마다 `DB` 폴더 위치가 다를 수 있으므로 요청값으로 변경할 수 있게 되어 있습니다.
 
-```bash
-curl -X POST "http://localhost:8080/api/migration/analyze/report?format=markdown" \
-  -H "Content-Type: application/json" \
-  -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
+생성 결과는 `generationOutputRoot` 아래에 만들어집니다.
+
+```text
+build/generated-migration
+  migration-report.md
+  src/main/java/<basePackage>/controller
+  src/main/java/<basePackage>/service
+  src/main/java/<basePackage>/mapper
+  src/main/resources/mapper
 ```
 
-CSV 리포트:
+## 마이그레이션 규칙
 
-```bash
-curl -X POST "http://localhost:8080/api/migration/analyze/report?format=csv" \
-  -H "Content-Type: application/json" \
-  -d '{"nexacroRoot":"C:/path/to/nexacro","legacyServerRoot":"C:/path/to/legacy-server"}'
-```
+1. `P*` 파일을 마이그레이션 진입점으로 처리합니다.
+2. `P*`의 public 메서드는 REST endpoint 후보가 됩니다.
+3. `P -> F -> D` 호출 흐름은 메서드 이름 기준으로 추적합니다.
+4. iBatis statement id를 참조하는 `D*` 메서드는 `MYBATIS_REQUIRED`로 표시합니다.
+5. iBatis statement id가 감지되지 않은 `D*` 메서드는 수동 검토용 `JPA_CANDIDATE`로 표시합니다.
+6. `D*`에서 참조한 statement id를 DB XML에서 찾지 못하면 수동 확인 경고를 리포트에 남깁니다.
 
-## 분석 방식
+## 생성 산출물
 
-1. `nexacroRoot` 아래의 `.xfdl` 파일을 화면 단위로 스캔합니다.
-2. 같은 이름의 `.xjs` 파일이 있으면 화면 script와 합쳐서 `transaction(...)` 호출을 찾습니다.
-3. `.xfdl`의 `Dataset`/`ColumnInfo`를 읽어 input/output dataset 컬럼 목록을 추출합니다.
-4. `legacyServerRoot` 아래의 Nexcore BizUnit XML에서 `<transactionId>` 목록을 추출합니다.
-5. Nexacro transaction의 service ID와 Nexcore `transactionId`를 비교해 `MATCHED` 또는 `NOT_FOUND` 상태를 만듭니다.
-6. 매칭된 transaction의 input dataset은 `Request` DTO 후보로, output dataset은 `Response` DTO 후보로 변환합니다.
+생성되는 코드는 운영 코드에 바로 반영하는 완성본이 아니라, 사람이 검토하고 보정하기 위한 Spring Boot 마이그레이션 초안입니다.
 
-## Python 사이드 분석 도구
-
-Spring Boot 실행 없이 파일 기준으로 빠르게 분석하려면 아래 Python 도구를 사용할 수 있습니다.
-
-```bash
-python tools/nexcore_nexacro_dataset_mapper.py \
-  --nexacro-root C:/path/to/nexacro \
-  --nexcore-root C:/path/to/nexcore \
-  --out build/migration-analysis \
-  --write-dtos
-```
-
-샘플 입력 파일은 [examples](examples) 폴더에 있습니다.
-
-```bash
-python tools/nexcore_nexacro_dataset_mapper.py \
-  --nexacro-root examples/nexacro \
-  --nexcore-root examples/nexcore \
-  --out build/example-analysis \
-  --write-dtos
-```
-
-출력 파일:
-
-- `build/migration-analysis/mapping-report.md`
-- `build/migration-analysis/mapping-report.csv`
-- `build/migration-analysis/dto/*.java` (`--write-dtos` 옵션 사용 시)
-
-Nexcore에서 비교해야 하는 ID 태그가 `transactionId`가 아니라면 [tools/nexcore_nexacro_dataset_mapper.py](tools/nexcore_nexacro_dataset_mapper.py) 상단의 아래 값을 수정하면 됩니다.
-
-```python
-BIZUNIT_ID_TAGS = ("transactionId",)
-TRANSACTION_ID_ARG_INDEX = 1
-```
-
-Nexcore BizUnit XML 예시는 아래 형식을 기준으로 합니다.
-
-```xml
-<bizUnit id="SampleBizUnit">
-  <bizUnitName>샘플업무</bizUnitName>
-  <componentId>sampleComponent</componentId>
-  <method-list>
-    <method>
-      <methodId>select</methodId>
-      <methodName>조회</methodName>
-      <transactionId>SAMPLE_SELECT</transactionId>
-    </method>
-  </method-list>
-</bizUnit>
-```
-
-## 백엔드 구현 우선순위
-
-1. 공통 코드, 공통 콤보, 로그인 후 기본 조회 API
-2. 조회 화면의 search/list API
-3. 저장, 수정, 삭제 API
-4. 배치, 엑셀, 파일, 메일, 특수 기능
-5. 퍼블리싱 완료 후 React 연동
+- `controller`: `P*` 기반 REST Controller 후보
+- `service`: `F*` 기반 Service 후보
+- `mapper`: `D*` 및 iBatis statement 기반 MyBatis Mapper interface 후보
+- `resources/mapper`: iBatis XML을 변환한 MyBatis XML 후보
+- `migration-report.md`: P/F/D 흐름, MyBatis 변환 여부, 수동 확인 지점
 
 ## 검증
 
 ```bash
-mvn test
+gradle test --no-daemon
 ```
-
-첫 번째 분석기 테스트는 샘플 `.xfdl/.xjs` 내용을 사용해 dataset 추출, transaction 파싱, search parameter 후보, 생성된 endpoint 후보를 검증합니다.
