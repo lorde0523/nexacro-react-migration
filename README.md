@@ -21,26 +21,127 @@
 - JavaParser
 - JUnit 5
 
-## 분석 및 생성 실행
+## 입력 경로 의미
 
-Spring Boot 애플리케이션을 실행한 뒤 아래 API를 호출합니다.
+API 요청에서 사용하는 주요 경로는 아래와 같습니다.
 
-```bash
-curl -X POST http://localhost:8080/api/migration/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "nexacroRoot": "C:/path/to/nexacro",
-    "legacyServerRoot": "C:/path/to/legacy-server",
-    "legacyJavaRoot": "C:/path/to/src/java/z/zz/zzz/zzzz",
-    "legacyDbRoot": "C:/path/to/DB",
-    "generationOutputRoot": "build/generated-migration",
-    "basePackage": "com.example.migrated"
-  }'
+```json
+{
+  "nexacroRoot": "Nexacro 화면 파일(.xfdl/.xjs)이 있는 폴더",
+  "legacyServerRoot": "Nexcore BizUnit XML 등 서버 메타 파일 폴더",
+  "legacyJavaRoot": "P/F/D Java 파일이 있는 폴더",
+  "legacyDbRoot": "iBatis SQL Map XML이 있는 DB 폴더",
+  "generationOutputRoot": "생성 결과를 저장할 폴더",
+  "basePackage": "생성될 Spring Boot 코드의 패키지명"
+}
 ```
 
-`legacyDbRoot`는 고정 경로가 아닙니다. Nexcore/iBatis SQL Map XML은 프로젝트마다 `DB` 폴더 위치가 다를 수 있으므로 요청값으로 변경할 수 있게 되어 있습니다.
+`legacyDbRoot`는 고정 경로가 아닙니다. Nexcore/iBatis SQL Map XML은 프로젝트마다 `DB` 폴더 위치가 다를 수 있으므로 요청값으로 변경할 수 있습니다.
 
-생성 결과는 `generationOutputRoot` 아래에 만들어집니다.
+백엔드 P/F/D 분석만 먼저 하고 싶어도 현재 `nexacroRoot`는 필수값입니다. Nexacro 파일이 아직 없으면 존재하는 빈 폴더를 만들어서 넣으면 됩니다.
+
+## 실행 방법 1: PowerShell/curl
+
+### 1. Spring Boot 서버 실행
+
+PowerShell에서 프로젝트 폴더로 이동한 뒤 서버를 실행합니다.
+
+```powershell
+cd C:\Users\Mint\Documents\migration
+gradle bootRun
+```
+
+정상 실행되면 콘솔에 대략 아래와 같은 로그가 나옵니다.
+
+```text
+Tomcat started on port 8080
+Started MigrationApplication
+```
+
+이 터미널은 서버 프로세스이므로 닫지 말고 그대로 둡니다.
+
+### 2. API 호출
+
+새 PowerShell 창을 열고 `curl.exe`로 API를 호출합니다. Windows PowerShell에서는 `curl`이 alias일 수 있으므로 `curl.exe`를 쓰는 것이 안전합니다.
+
+```powershell
+curl.exe -X POST "http://localhost:8080/api/migration/analyze" `
+  -H "Content-Type: application/json" `
+  -d "{
+    `"nexacroRoot`": `"C:/path/to/nexacro`",
+    `"legacyServerRoot`": `"C:/path/to/legacy-server`",
+    `"legacyJavaRoot`": `"C:/path/to/src/java/z/zz/zzz/zzzz`",
+    `"legacyDbRoot`": `"C:/path/to/DB`",
+    `"generationOutputRoot`": `"build/generated-migration`",
+    `"basePackage`": `"com.example.migrated`"
+  }"
+```
+
+실제 사용 시 `C:/path/to/...` 값은 각 프로젝트 경로에 맞게 바꿉니다.
+
+## 실행 방법 2: IntelliJ IDEA
+
+### 1. 프로젝트 열기
+
+1. IntelliJ IDEA 실행
+2. `Open` 선택
+3. `C:\Users\Mint\Documents\migration` 폴더 선택
+4. Gradle 프로젝트로 import
+
+처음 열면 Gradle dependency를 내려받기 때문에 시간이 조금 걸릴 수 있습니다.
+
+### 2. JDK 21 설정
+
+`File > Project Structure > Project`에서 아래처럼 설정합니다.
+
+- SDK: Java 21
+- Language level: 21
+
+Java 21 SDK가 보이지 않으면 `Add SDK`로 아래 경로를 지정합니다.
+
+```text
+C:\Program Files\Eclipse Adoptium\jdk-21.0.9.10-hotspot
+```
+
+### 3. Spring Boot 실행
+
+아래 파일을 엽니다.
+
+```text
+src/main/java/com/lorde0523/migration/MigrationApplication.java
+```
+
+클래스 옆 초록색 실행 버튼을 누르고 `Run MigrationApplication`을 선택합니다.
+
+또는 오른쪽 Gradle 탭에서 아래 task를 실행해도 됩니다.
+
+```text
+Tasks > application > bootRun
+```
+
+### 4. IntelliJ HTTP Client로 API 호출
+
+프로젝트 루트에 `request.http` 파일을 만들고 아래 내용을 넣습니다.
+
+```http
+POST http://localhost:8080/api/migration/analyze
+Content-Type: application/json
+
+{
+  "nexacroRoot": "C:/path/to/nexacro",
+  "legacyServerRoot": "C:/path/to/legacy-server",
+  "legacyJavaRoot": "C:/path/to/src/java/z/zz/zzz/zzzz",
+  "legacyDbRoot": "C:/path/to/DB",
+  "generationOutputRoot": "build/generated-migration",
+  "basePackage": "com.example.migrated"
+}
+```
+
+`POST http://...` 왼쪽에 뜨는 초록색 실행 버튼을 누르면 API가 호출됩니다.
+
+## 생성 결과 확인
+
+API 호출이 성공하면 `generationOutputRoot` 아래에 결과가 생성됩니다. 기본 예시는 아래와 같습니다.
 
 ```text
 build/generated-migration
@@ -50,6 +151,8 @@ build/generated-migration
   src/main/java/<basePackage>/mapper
   src/main/resources/mapper
 ```
+
+먼저 `migration-report.md`를 열어서 어떤 `P -> F -> D` 흐름이 잡혔고, 어떤 iBatis 쿼리가 MyBatis 후보로 변환됐는지 확인합니다.
 
 ## 마이그레이션 규칙
 
