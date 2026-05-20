@@ -128,4 +128,63 @@ class NexacroContractExtractorTest {
                 .extracting("fields")
                 .satisfies(fields -> assertThat(fields.toString()).contains("sampleNm", "useYn"));
     }
+
+    @Test
+    void resolvesTransactionArgumentsStoredInVariables() throws Exception {
+        Path nexacro = tempDir.resolve("nexacro/sample/VariableService.xfdl");
+        Files.createDirectories(nexacro.getParent());
+        Files.writeString(nexacro, """
+                <?xml version="1.0" encoding="utf-8"?>
+                <FDL>
+                  <Form id="VariableService">
+                    <Objects>
+                      <Dataset id="dsSearch">
+                        <ColumnInfo>
+                          <Column id="SAMPLE_NM" type="STRING" size="50"/>
+                        </ColumnInfo>
+                      </Dataset>
+                      <Dataset id="dsSampleList">
+                        <ColumnInfo>
+                          <Column id="SAMPLE_ID" type="STRING" size="20"/>
+                        </ColumnInfo>
+                      </Dataset>
+                    </Objects>
+                    <Script><![CDATA[
+                      var transactionName = "select";
+                      var serviceId = "SAMPLE_SELECT";
+                      var inputDatasets = "dsSearch=dsSearch";
+                      var outputDatasets = "dsSampleList=dsSampleList";
+                      this.transaction(transactionName, serviceId, inputDatasets, outputDatasets, "", "fnCallback");
+                    ]]></Script>
+                  </Form>
+                </FDL>
+                """);
+
+        Path nexcore = tempDir.resolve("legacy/SampleBizUnit.xml");
+        Files.createDirectories(nexcore.getParent());
+        Files.writeString(nexcore, """
+                <bizUnit id="SampleBizUnit">
+                    <componentId>sampleComponent</componentId>
+                    <method-list>
+                        <method>
+                            <methodId>select</methodId>
+                            <transactionId>SAMPLE_SELECT</transactionId>
+                        </method>
+                    </method-list>
+                </bizUnit>
+                """);
+
+        MigrationAnalysisReport report = new NexacroContractExtractor()
+                .analyze(tempDir.resolve("nexacro"), tempDir.resolve("legacy"));
+
+        ScreenAnalysis screen = report.screens().get(0);
+        assertThat(screen.transactions()).hasSize(1);
+        assertThat(screen.transactions().get(0).name()).isEqualTo("select");
+        assertThat(screen.transactions().get(0).serviceUrl()).isEqualTo("SAMPLE_SELECT");
+        assertThat(screen.transactions().get(0).inputDatasets()).containsEntry("dsSearch", "dsSearch");
+        assertThat(screen.transactions().get(0).outputDatasets()).containsEntry("dsSampleList", "dsSampleList");
+        assertThat(screen.serviceMatches().get(0).matched()).isTrue();
+        assertThat(screen.dtoCandidates()).extracting("name")
+                .contains("VariableServiceSelectRequest", "VariableServiceSelectResponse");
+    }
 }

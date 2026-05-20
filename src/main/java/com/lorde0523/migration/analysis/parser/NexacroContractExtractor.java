@@ -67,6 +67,10 @@ public class NexacroContractExtractor {
             "(?:this\\.)?(\\w+)\\.getColumn\\s*\\([^,]+,\\s*[\"']([^\"']+)[\"']",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern STRING_ASSIGNMENT = Pattern.compile(
+            "(?:\\b(?:var|let|const)\\s+(\\w+)|\\bthis\\.(\\w+))\\s*=\\s*([\"'])(.*?)\\3\\s*;",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL
+    );
     private static final Pattern DOCTYPE = Pattern.compile("<!DOCTYPE[^>]*>", Pattern.CASE_INSENSITIVE);
     private static final Set<String> IBATIS_OPERATIONS = Set.of("select", "insert", "update", "delete");
 
@@ -792,6 +796,7 @@ public class NexacroContractExtractor {
     private List<TransactionSpec> parseTransactions(String scriptContent) {
         Matcher matcher = TRANSACTION.matcher(scriptContent);
         List<TransactionSpec> transactions = new ArrayList<>();
+        Map<String, String> stringVariables = parseStringAssignments(scriptContent);
 
         while (matcher.find()) {
             List<String> args = splitArguments(matcher.group(1));
@@ -799,16 +804,32 @@ public class NexacroContractExtractor {
                 continue;
             }
             transactions.add(new TransactionSpec(
-                    unquote(args.get(0)),
-                    unquote(args.get(1)),
-                    parseDatasetMapping(args.size() > 2 ? unquote(args.get(2)) : ""),
-                    parseDatasetMapping(args.size() > 3 ? unquote(args.get(3)) : ""),
+                    resolveStringArgument(args.get(0), stringVariables),
+                    resolveStringArgument(args.get(1), stringVariables),
+                    parseDatasetMapping(args.size() > 2 ? resolveStringArgument(args.get(2), stringVariables) : ""),
+                    parseDatasetMapping(args.size() > 3 ? resolveStringArgument(args.get(3), stringVariables) : ""),
                     args.size() > 4 ? args.get(4).trim() : "",
-                    args.size() > 5 ? unquote(args.get(5)) : ""
+                    args.size() > 5 ? resolveStringArgument(args.get(5), stringVariables) : ""
             ));
         }
 
         return List.copyOf(transactions);
+    }
+
+    private Map<String, String> parseStringAssignments(String scriptContent) {
+        Map<String, String> variables = new LinkedHashMap<>();
+        Matcher matcher = STRING_ASSIGNMENT.matcher(scriptContent);
+        while (matcher.find()) {
+            String variableName = matcher.group(1) == null ? matcher.group(2) : matcher.group(1);
+            variables.put(variableName, matcher.group(4));
+        }
+        return Map.copyOf(variables);
+    }
+
+    private String resolveStringArgument(String argument, Map<String, String> stringVariables) {
+        String value = unquote(argument);
+        String variableName = value.startsWith("this.") ? value.substring("this.".length()) : value;
+        return stringVariables.getOrDefault(variableName, value);
     }
 
     private List<SearchParameterCandidate> parseSearchParameters(String scriptContent) {
